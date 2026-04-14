@@ -54,6 +54,139 @@ impl <'info>BondingCurve{
         system_program: &AccountInfo<'info>,
         token_program: &AccountInfo<'info>
     ) -> Result<bool>{
-        
+        let (amount_out, fee_amount) = self.calculate_amount_out(amount_in, 0, fee_percentage)?;
+
+        require!(
+            amount_out >= min_amount_out
+            Error::InsufficientAmountOut
+        );
+
+        sol_transfer_from_user(&user, fee_recipient, system_program, fee_amount)?;
+
+        sol_transfer_from_user(&user, curve_pda, system_program, amount_in - fee_amount)?;
+
+        token_transfer_with_signer(
+            curve_ata,
+            curve_pda,
+            user_ata,
+            token_program,
+            &[&BondingCurve::get_signer(&token_mint.key(), &curve_bump)],
+            amount_out
+        )?;
+
+        let new_token_reserves = self.virtual_token_reserve.checked_sub(amount_out).ok_or(Error::InvalidReserves)?;
+
+        let new_sol_reserves = self.virtual_sol_reserve.checked_add(amount_in - fee_amount).ok_or(Error::InvalidReserves)?;
+
+        self.update_reserves(new_sol_reserves, new_token_reserves)?;
+
+        emit!(TokenPurchased {
+            token_mint: token_mint.key(),
+            buyer: user.key(),
+            sol_amount: amount_in,
+            token_amount: amount_out,
+            fee_amount: fee_amount,
+            price: new_sol_reserves / new_token_reserves
+        });
+
+        if new_sol_reserves >= curve_limit {
+            self.is_completed = true;
+            emit!(CurveCompleted {
+                token_mint: token_mint.key(),
+                final_sol_reserves: new_sol_reserves,
+                final_token_reserves: new_token_reserves
+            });
+
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
+    pub fn Sell(
+        &mut self,
+        token_mint: &Account<'info, Mint>,
+        user: &Signer<'info>,
+        curve_pda: &mut AccountInfo<'info>,
+        user_ata: &mut AccountInfo<'info>,
+        fee_recipient: &mut AccountInfo<'info>,
+        curve_ata: &mut AccountInfo<'info>,
+        amount_in: u64,
+        min_amount_out: u64,
+        fee_percentage: f64,
+        curve_bump: u8,
+        system_program: &AccountInfo<'info>,
+        token_program: &AccountInfo<'info>
+    ) -> Result<()> {
+        let (amount_out, fee_amount) = self.calculate_amount_out(amount_in, 1, fee_percentage)?;
+
+        require!(
+            amount_out >= min_amount_out,
+            Error:: InsufficientAmountOut
+        );
+
+        let token = token_mint.key();
+        let signer_seeds: &[&[&[u8]]] = &[&BondingCurve::get_signer(&token, &curve_bump)];
+
+        token_transfer_user(user_ata, curve_ata, user, token_program, amount_in)?;
+
+        sol_transfer_with_signer(
+            curve_pda,
+            user,
+            system_program,
+            signer_seeds,
+            amount_out - fee_amount
+        )?;
+
+        sol_transfer_with_signer(
+            curve_pda,
+            fee_recipient,
+            system_program,
+            signer_seeds,
+            fee_amount
+        )?;
+
+        let new_token_reserves = self.virtual_token_reserve.checked_add(amount_in).ok_or(Error::InvalidReserves)?;
+
+        let new_sol_reserves = self.virtual_sol_reserve.checked_sub(amount_out).ok_or(Error::InvalidReserves)?;
+
+        emit!(TokenSold {
+            token_mint: token_mint.key(),
+            sol_amount: amount_in,
+            token_amount: amount_out,
+            fee_amount: fee_amount,
+            price: new_sol_reserves / new_token_reserves
+        });
+
+        Ok(()) 
+    }
+
+    pub fn calculate_amount_out(
+        &mut self,
+        amount_in: u64,
+        direction: u8,
+        fee_percentage: f64,
+    ) -> Result<(u64, u64)> {
+        let fee_amount = (amount_in as f64 * fee_percentage / 100.0) as u64;
+        let amount_after_fee = amount_in.checked_sub(fee_amount).ok_or(Error::InsufficientFunds)?;
+
+        let virtual_sol = self.virtual_sol_reserve as f64;
+        let virtual_token = self.virtual_token_reserve as f64;
+        let amount_after_fee = amount_after_fee as f64;
+
+        const CRR: f64 = 0.2;
+
+        let amount_out = if direction == 0 {
+            require!(virtual_sol > 0.0, Error::DivisionByZero);
+            let base = 1.0 + amount_after_fee / virtual_sol;
+            virtual_token * (base.powf(CRR) - 1.0)
+        } else {
+            require!(virtual_token > 0.0, Error::DivisionByZero);
+            let base = 1.0 - amount_after_fee / virtual_token;
+            virtual_sol * (1.0 - base.powf(1.0 / CRR))
+        };
+
+        let final_amount = amount_out.floor() as u64;
+        Ok(final_amount, fee_amount)
     }
 }
