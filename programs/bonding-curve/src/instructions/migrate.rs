@@ -150,6 +150,51 @@ impl <'info>Migrate<'info>{
             open_time
         )?;
 
+        let bump = ctx.bumps.bonding_curve;
+        let token_key = ctx.accounts.token_mint.key();
+        let seeds = BondingCurve::get_signer(
+            &token_key,
+            &bump
+        );
+
+        let signer_seeds = &[&seeds[..]];
+
+        sol_transfer_with_signer(
+            &ctx.accounts.curve_sol_account.to_account_info(),
+            &ctx.accounts.fee_recipient,
+            &ctx.accounts.system_program,
+            signer_seeds,
+            migration_fee,
+        )?;
+
+        sol_transfer_with_signer(
+            &ctx.accounts.curve_sol_account.to_account_info(),
+            &ctx.accounts.token_vault_0.to_account_info(),
+            &ctx.accounts.system_program,
+            signer_seeds,
+            remaining_sol,
+        )?;
+
+        token_transfer_with_signer(
+            &ctx.accounts.curve_token_account.to_account_info(),
+            &bonding_curve.to_account_info(),
+            &ctx.accounts.token_vault_1.to_account_info(),
+            &ctx.acccounts.token_program.to_account_info(),
+            signer_seeds,
+            token_balance,
+        )?;
+
+        bonding_curve.is_migrated = true;
+
+        emit!(MigrationCompleted{
+            token_mint: ctx.accounts.token_mint.key(),
+            sol_Amount: remaining_sol,
+            token_amount: token_balance,
+            migration_fee: migration_fee,
+            raydium_pool: ctx.accounts.pool_state.key(),
+        });
+
+        Ok(())
         
 
     }
