@@ -33,7 +33,7 @@ pub fn sol_transfer_with_signer<'info>(
     _signer_seeds: &[&[&u8]],
     amount: u64
 ) ->Result<()>{
-    source.sub.lamports(amount)?;
+    source.sub_lamports(amount)?;
     destination.add_lamports(amount)?;
     Ok(())
 }
@@ -54,11 +54,12 @@ pub fn token_transfer_user<'info>(
         },
     );
     token::transfer(cpi_ctx, amount)?;
-    Ok()
+    Ok(())
 }
 
 pub fn token_transfer_with_signer<'info>(
     from: &AccountInfo<'info>,
+    authority: &AccountInfo<'info>,
     to: &AccountInfo<'info>,
     authority: &AccountInfo<'info>,
     token_program: &AccountInfo<'info>,

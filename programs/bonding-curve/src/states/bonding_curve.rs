@@ -71,7 +71,7 @@ impl <'info>BondingCurve{
             user_ata,
             token_program,
             &[&BondingCurve::get_signer(&token_mint.key(), &curve_bump)],
-            amount_out
+            amount_out,
         )?;
 
         let new_token_reserves = self.virtual_token_reserve.checked_sub(amount_out).ok_or(Error::InvalidReserves)?;
@@ -126,7 +126,7 @@ impl <'info>BondingCurve{
         );
 
         let token = token_mint.key();
-        let signer_seeds: &[&[&[u8]]] = &[&BondingCurve::get_signer(&token, &curve_bump)];
+        let signer_seeds: &[&[&u8]] = &[&BondingCurve::get_signer(&token, &curve_bump)];
 
         token_transfer_user(user_ata, curve_ata, user, token_program, amount_in)?;
 
@@ -187,6 +187,6 @@ impl <'info>BondingCurve{
         };
 
         let final_amount = amount_out.floor() as u64;
-        Ok(final_amount, fee_amount)
+        Ok((final_amount, fee_amount))
     }
 }

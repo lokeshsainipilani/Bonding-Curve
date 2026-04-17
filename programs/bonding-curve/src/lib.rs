@@ -1,5 +1,14 @@
 use anchor_lang::prelude::*;
 
+pub mod constants;
+pub mod errors;
+pub mod instructions;
+pub mod states;
+pub mod utils; 
+
+use crate::instructions::*;
+use crate::states::*;
+
 declare_id!("7GBJtXN4gPCRxgAfBn7yYAQd46VU5TAfQosod1SU28qh");
 
 #[program]
@@ -12,7 +21,7 @@ pub mod bonding_curve {
         ctx.accounts.process(new_config)
     }
 
-    pub fn launch(ctx: Context<'_, '_, '_, 'info, Launch<'info>>,
+    pub fn launch<'info>(ctx: Context<'_, '_, '_, 'info, Launch<'info>>,
         name:String,
         symbol: String,
         uri: String
@@ -20,7 +29,7 @@ pub mod bonding_curve {
         ctx.accounts.process(name, uri, symbol, ctx.bumps.global_config)
     }
 
-    pub fn swap(ctx: Context<'_, '_, '_, 'info, Swap<'info>>, amount:u64, direction:u8, min_out: u64) -> Result<()> {
+    pub fn swap<'info>(ctx: Context<'_, '_, '_, 'info, Swap<'info>>, amount:u64, direction:u8, min_out: u64) -> Result<()> {
         ctx.accounts.process(amount, direction, min_out, ctx.bumps.bonding_curve)
     }
 

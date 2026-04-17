@@ -9,7 +9,7 @@ pub struct Configure<'info> {
     #[account(
         init_if_needed,
         payer = admin,
-        seeds [Config::SEED_PREFIX.as_bytes()],
+        seeds = [Config::SEED_PREFIX.as_bytes()],
         space = 8 + Config::LEN,
         bump
     )]
@@ -44,7 +44,7 @@ impl<'info> Configure<'info> {
         self.global_config.curve_limit = new_config.curve_limit;
         self.global_config.initial_virtual_token_reserve = new_config.initial_virtual_token_reserve;
         self.global_config.initial_virtual_sol_reserve = new_config.initial_virtual_sol_reserve;
-        self.global_config.initial_real_token_reserve = new_config.initial_rela_token_reserve;
+        self.global_config.initial_real_token_reserve = new_config.initial_real_token_reserve;
         self.global_config.total_token_supply = new_config.total_token_supply;
         self.global_config.buy_fee_percentage = new_config.buy_fee_percentage;
         self.global_config.sell_fee_percentage = new_config.sell_fee_percentage;

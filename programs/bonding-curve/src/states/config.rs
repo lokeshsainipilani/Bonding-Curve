@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-#[derive(AnchorSerialize, AnchorDesrialize, Clone, Default)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 
 pub struct ConfigSettings {
     pub authority: Pubkey,
@@ -22,11 +22,11 @@ pub struct Config {
     pub fee_recipient: Pubkey,
     pub curve_limit: u64,
     pub initial_virtual_token_reserve: u64,
-    pub initial_virtual_sol_reerve: u64,
+    pub initial_virtual_sol_reserve: u64,
     pub initial_real_token_reserve: u64,
     pub total_token_supply: u64,
     pub buy_fee_percentage:f64,
-    pub sell_percntage_fee: f64,
+    pub sell_fee_percentage: f64,
     pub migration_fee_percentage: f64,
 
     pub reserved: [[u8; 8]; 8]
